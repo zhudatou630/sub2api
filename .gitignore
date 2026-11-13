@@ -168,7 +168,6 @@ issues/
 /plugins/
 
 # Calm fork: explicitly publish only the maintenance guide and test entrypoint.
-!AGENTS.md
 !docs/CALM_FORK.md
 !scripts/
 scripts/*
@@ -177,6 +176,8 @@ scripts/calm/*
 !scripts/calm/check.sh
 
 # Installation-specific material and generated artifacts stay outside Git.
+# Machine-local agent instructions are deliberately not published.
+/AGENTS.md
 /artifacts/
 /backups/
 /secrets/

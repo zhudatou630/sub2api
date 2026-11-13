@@ -86,6 +86,7 @@ After review, merge the update branch into `calm` and create a new annotated `ca
 
 ## Publishing and repository boundaries
 
+- `AGENTS.md` is intentionally local-only and ignored by Git. It may describe an operator's private workspace and deployment handoff, but must not contain credentials. A fresh clone does not include it; configure local operational instructions separately. Early revisions tracked a generic version: back up local instructions before checking out those revisions, or build them in a separate worktree to avoid overwriting an ignored file. This document remains the public, installation-independent maintenance guide.
 - GitHub Actions are initially disabled at repository level. Inherited upstream workflows are retained for reference, not enabled as a release pipeline.
 - Enabling CI, supplying registry credentials, publishing images or deploying requires a separately reviewed workflow. This fork has no automatic production deployment.
 - No production `.env`, tokens, account identities, subscriptions, private URLs, infrastructure inventory, backups or logs belong here.
