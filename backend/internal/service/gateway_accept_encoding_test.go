@@ -57,7 +57,7 @@ func TestGatewayService_AcceptEncodingOnWire(t *testing.T) {
 					if tc.encoding != "" {
 						c.Request.Header.Set("Accept-Encoding", tc.encoding)
 					}
-					svc := &GatewayService{cfg: &config.Config{}}
+					svc := &GatewayService{cfg: &config.Config{}, identityService: NewIdentityService(&stubIdentityCache{}, calmStore())}
 					account := &Account{Platform: PlatformAnthropic, Type: AccountTypeOAuth}
 					req, _, err := svc.buildUpstreamRequest(context.Background(), c, account,
 						[]byte(`{"model":"claude-sonnet-4-6","messages":[]}`), "test-token", "oauth", "claude-sonnet-4-6", false, false)

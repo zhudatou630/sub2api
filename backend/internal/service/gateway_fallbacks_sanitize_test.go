@@ -163,7 +163,7 @@ func TestBuildUpstreamRequest_OAuthMimicHaiku_StripsFallbacksEndToEnd(t *testing
 	}
 	// 客户端默认透传 "fallbacks":"default"（Claude Code / SDK / OpenCode 等）
 	body := []byte(`{"model":"claude-haiku-4-5","fallbacks":"default","messages":[]}`)
-	svc := &GatewayService{cfg: &config.Config{}}
+	svc := &GatewayService{cfg: &config.Config{}, identityService: NewIdentityService(&stubIdentityCache{}, calmStore())}
 	req, _, err := svc.buildUpstreamRequest(
 		context.Background(), c, account, body,
 		"oauth-tok", "oauth", "claude-haiku-4-5", false, true, // mimicClaudeCode=true

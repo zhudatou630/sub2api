@@ -232,7 +232,7 @@ func TestBuildUpstreamRequestOAuthMimic_MidConversationOutputConfig(t *testing.T
 				`{"role":"system","content":[],"output_config":{"effort":"high"}},` +
 				`{"role":"user","content":"hello"}]}`)
 
-			svc := &GatewayService{cfg: &config.Config{}}
+			svc := &GatewayService{cfg: &config.Config{}, identityService: NewIdentityService(&stubIdentityCache{}, calmStore())}
 			req, _, err := svc.buildUpstreamRequest(
 				context.Background(), c, account, body,
 				"oauth-tok", "oauth", "claude-opus-5", false, true, // mimicClaudeCode=true

@@ -135,6 +135,7 @@ func TestForwardCountTokens_MimicPathKeepsClient1hBreakpointValid(t *testing.T) 
 	svc := &GatewayService{
 		cfg:              &config.Config{Gateway: config.GatewayConfig{MaxLineSize: defaultMaxLineSize}},
 		httpUpstream:     upstream,
+		identityService:  NewIdentityService(&stubIdentityCache{}, calmStore()),
 		rateLimitService: &RateLimitService{},
 	}
 	account := &Account{

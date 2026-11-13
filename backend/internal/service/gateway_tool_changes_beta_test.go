@@ -43,7 +43,7 @@ func TestBuildUpstreamRequestToolChangeBetas(t *testing.T) {
 			account := &Account{ID: 701, Platform: PlatformAnthropic, Type: AccountTypeOAuth,
 				Credentials: map[string]any{"access_token": "test-token"}, Status: StatusActive, Schedulable: true}
 			body := []byte(`{"model":"claude-opus-5-5","max_tokens":1024,"messages":[{"role":"user","content":[{"type":"tool_addition","tool":{"type":"tool_reference","tool_name":"lookup"}},{"type":"text","text":"Use lookup"}]}]}`)
-			svc := &GatewayService{cfg: &config.Config{}}
+			svc := &GatewayService{cfg: &config.Config{}, identityService: NewIdentityService(&stubIdentityCache{}, calmStore())}
 			req, _, err := svc.buildUpstreamRequest(context.Background(), c, account, body,
 				"test-token", "oauth", "claude-opus-5-5", false, true)
 			require.NoError(t, err)

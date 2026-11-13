@@ -318,7 +318,8 @@ type AccountUsageService struct {
 	grokQuotaService        *GrokQuotaService
 	openAIQuotaService      *OpenAIQuotaService
 	cache                   *UsageCache
-	identityCache           IdentityCache
+	identityCache           IdentityCache // OpenAI probe only: retain its existing semantics.
+	identityService         *IdentityService
 	tlsFPProfileService     *TLSFingerprintProfileService
 	agentIdentityTaskMu     sync.Mutex
 	agentIdentityWS         agentIdentityWSConnectionInvalidator
@@ -336,6 +337,7 @@ func NewAccountUsageService(
 	openAIQuotaService *OpenAIQuotaService,
 	cache *UsageCache,
 	identityCache IdentityCache,
+	identityService *IdentityService,
 	tlsFPProfileService *TLSFingerprintProfileService,
 ) *AccountUsageService {
 	return &AccountUsageService{
@@ -349,6 +351,7 @@ func NewAccountUsageService(
 		openAIQuotaService:      openAIQuotaService,
 		cache:                   cache,
 		identityCache:           identityCache,
+		identityService:         identityService,
 		tlsFPProfileService:     tlsFPProfileService,
 	}
 }
@@ -1665,12 +1668,13 @@ func (s *AccountUsageService) fetchOAuthUsageRaw(ctx context.Context, account *A
 		TLSProfile:  s.tlsFPProfileService.ResolveTLSProfile(account),
 	}
 
-	// 尝试获取缓存的 Fingerprint（包含 User-Agent 等信息）
-	if s.identityCache != nil {
-		if fp, err := s.identityCache.GetFingerprint(ctx, account.ID); err == nil && fp != nil {
-			opts.Fingerprint = fp
-		}
+	// Claude usage shares the durable identity and server-owned bundle. Never
+	// fall back to cached UA or issue the request after any identity failure.
+	fp, err := s.identityService.GetOrCreateFingerprint(ctx, account.ID, nil)
+	if err != nil {
+		return nil, ErrClaudeIdentityUnavailable
 	}
+	opts.Fingerprint = fp
 
 	return s.usageFetcher.FetchUsageWithOptions(ctx, opts)
 }

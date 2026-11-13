@@ -56,6 +56,7 @@ func newForwardPartialUsageServiceForTest(upstream *anthropicHTTPUpstreamRecorde
 		},
 	}
 	return &GatewayService{
+		identityService:      NewIdentityService(&stubIdentityCache{}, calmStore()),
 		cfg:                  cfg,
 		responseHeaderFilter: compileResponseHeaderFilter(cfg),
 		httpUpstream:         upstream,
@@ -237,6 +238,7 @@ func TestGatewayService_Forward_PreOutputSSEOverloadedErrorUsesSemantic529(t *te
 		cfg:                  cfg,
 		responseHeaderFilter: compileResponseHeaderFilter(cfg),
 		httpUpstream:         upstream,
+		identityService:      NewIdentityService(&stubIdentityCache{}, calmStore()),
 		rateLimitService:     NewRateLimitService(repo, nil, cfg, nil, nil),
 		deferredService:      &DeferredService{},
 	}
@@ -286,6 +288,7 @@ func TestGatewayService_Forward_PostOutputSSEOverloadedErrorKeepsExistingStatus(
 		cfg:                  cfg,
 		responseHeaderFilter: compileResponseHeaderFilter(cfg),
 		httpUpstream:         upstream,
+		identityService:      NewIdentityService(&stubIdentityCache{}, calmStore()),
 		rateLimitService:     NewRateLimitService(repo, nil, cfg, nil, nil),
 		deferredService:      &DeferredService{},
 	}

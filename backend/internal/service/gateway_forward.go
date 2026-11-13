@@ -227,11 +227,17 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 		}
 
 		normalizeOpts := claudeOAuthNormalizeOptions{}
-		if s.identityService != nil && c != nil {
-			fp, err := s.identityService.GetOrCreateFingerprint(ctx, account.ID, c.Request.Header)
-			if err == nil && fp != nil {
+		if account.Platform == PlatformAnthropic {
+			fp, err := s.identityService.GetOrCreateFingerprint(ctx, account.ID, nil)
+			if err != nil {
+				return nil, ErrClaudeIdentityUnavailable
+			}
+			if fp != nil {
 				// metadata 透传开启时跳过 metadata 注入
-				_, mimicMPT, _ := s.settingService.GetGatewayForwardingSettings(ctx)
+				mimicMPT := false
+				if s.settingService != nil {
+					_, mimicMPT, _ = s.settingService.GetGatewayForwardingSettings(ctx)
+				}
 				if !mimicMPT {
 					if metadataUserID := s.buildOAuthMetadataUserID(parsed, account, fp); metadataUserID != "" {
 						normalizeOpts.injectMetadata = true

@@ -288,7 +288,7 @@ func safeHeaderValueForLog(key string, v string) string {
 	case "authorization", "x-api-key":
 		return redactAuthHeaderValue(v)
 	default:
-		return strings.TrimSpace(v)
+		return fmt.Sprintf("[redacted bytes=%d]", len(v))
 	}
 }
 
@@ -356,31 +356,21 @@ func buildClaudeMimicDebugLine(req *http.Request, body []byte, account *Account,
 	}
 
 	metaUserID := strings.TrimSpace(gjson.GetBytes(body, "metadata.user_id").String())
-	sysPreview := strings.TrimSpace(extractSystemPreviewFromBody(body))
-
-	// Truncate preview to keep logs sane.
-	if len(sysPreview) > 300 {
-		sysPreview = sysPreview[:300] + "..."
-	}
-	sysPreview = strings.ReplaceAll(sysPreview, "\n", "\\n")
-	sysPreview = strings.ReplaceAll(sysPreview, "\r", "\\r")
-
+	parsedMeta := ParseMetadataUserID(metaUserID)
 	aid := int64(0)
-	aname := ""
 	if account != nil {
 		aid = account.ID
-		aname = account.Name
 	}
 
 	return fmt.Sprintf(
-		"url=%s account=%d(%s) tokenType=%s mimic=%t meta.user_id=%q system.preview=%q headers={%s}",
-		req.URL.String(),
+		"host=%s account=%d tokenType=%s mimic=%t meta.user_id_present=%t meta.user_id_parseable=%t body_bytes=%d headers={%s}",
+		req.URL.Host,
 		aid,
-		aname,
 		tokenType,
 		mimicClaudeCode,
-		metaUserID,
-		sysPreview,
+		metaUserID != "",
+		parsedMeta != nil,
+		len(body),
 		strings.Join(h, " "),
 	)
 }
@@ -909,14 +899,14 @@ func (s *GatewayService) GenerateSessionHash(parsed *ParsedRequest) string {
 		if uid != nil && uid.SessionID != "" {
 			slog.Info("sticky.hash_source",
 				"source", "metadata_user_id",
-				"session_id", uid.SessionID,
-				"device_id", uid.DeviceID,
+				"session_id_present", uid.SessionID != "",
+				"device_id_present", uid.DeviceID != "",
 				"is_new_format", uid.IsNewFormat,
 			)
 			return uid.SessionID
 		}
 		slog.Info("sticky.hash_metadata_parse_failed",
-			"metadata_user_id", parsed.MetadataUserID,
+			"metadata_user_id_present", parsed.MetadataUserID != "",
 			"parsed_nil", uid == nil,
 		)
 	}
@@ -1717,7 +1707,7 @@ func (s *GatewayService) debugLogGatewaySnapshot(tag string, headers http.Header
 		}
 		sort.Strings(extraKeys)
 		for _, k := range extraKeys {
-			fmt.Fprintf(&buf, "  %s: %s\n", k, extra[k])
+			fmt.Fprintf(&buf, "  %s: [present bytes=%d]\n", k, len(extra[k]))
 		}
 	}
 
@@ -1729,19 +1719,9 @@ func (s *GatewayService) debugLogGatewaySnapshot(tag string, headers http.Header
 		}
 	}
 
-	// 3. body（完整输出，格式化 JSON 便于 diff）
-	fmt.Fprint(&buf, "--- body ---\n")
-	if len(body) == 0 {
-		fmt.Fprint(&buf, "  (empty)\n")
-	} else {
-		var pretty bytes.Buffer
-		if json.Indent(&pretty, body, "  ", "  ") == nil {
-			fmt.Fprintf(&buf, "  %s\n", pretty.Bytes())
-		} else {
-			// JSON 格式化失败时原样输出
-			fmt.Fprintf(&buf, "  %s\n", body)
-		}
-	}
+	// 3. Never persist request bodies, metadata identities or conversation text.
+	fmt.Fprintf(&buf, "--- body ---\n  bytes=%d valid_json=%t metadata_user_id_present=%t\n",
+		len(body), json.Valid(body), gjson.GetBytes(body, "metadata.user_id").Exists())
 
 	// 写入文件（调试用，并发写入可能交错但不影响可读性）
 	_, _ = f.WriteString(buf.String())

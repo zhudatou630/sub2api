@@ -41,7 +41,7 @@ func TestBuildOAuthMimicRequest_RuntimeVersionConsistentBetweenHeaderAndBilling(
 			body, err = sjson.SetBytes(body, "system.0.text", billing)
 			require.NoError(t, err)
 
-			svc := &GatewayService{cfg: &config.Config{}}
+			svc := &GatewayService{cfg: &config.Config{}, identityService: NewIdentityService(&stubIdentityCache{}, calmStore())}
 			account := &Account{ID: 1, Platform: PlatformAnthropic, Type: AccountTypeOAuth}
 
 			var req *http.Request
@@ -72,44 +72,34 @@ func TestBuildOAuthMimicRequest_RuntimeVersionConsistentBetweenHeaderAndBilling(
 	}
 }
 
-// e. 注入更高版本后，floorClaudeCLIUserAgentVersion 把存量低版本指纹抬升到新版本；
-//
-//	等于或高于新版本的指纹保持不动（只升不降）。
-func TestFloorClaudeCLIUserAgentVersion_UsesRuntimeVersion(t *testing.T) {
+// Runtime version changes replace the entire server-owned bundle rather than
+// flooring or merging client-owned cached values.
+func TestFingerprintBundle_UsesRuntimeVersion(t *testing.T) {
 	const upgraded = "9.9.9"
 	withCLIVersionResolverForTest(t, func() string { return upgraded })
-
-	floored, changed := floorClaudeCLIUserAgentVersion("claude-cli/2.1.100 (external, cli)")
-	require.True(t, changed)
-	require.Equal(t, "claude-cli/"+upgraded+" (external, cli)", floored)
-
-	// 等于运行期版本：不动。
-	same, changed := floorClaudeCLIUserAgentVersion("claude-cli/" + upgraded + " (external, cli)")
-	require.False(t, changed)
-	require.Equal(t, "claude-cli/"+upgraded+" (external, cli)", same)
-
-	// 高于运行期版本：不动。
-	greater, changed := floorClaudeCLIUserAgentVersion("claude-cli/99.0.0 (external, cli)")
-	require.False(t, changed)
-	require.Equal(t, "claude-cli/99.0.0 (external, cli)", greater)
-
-	// resolver 返回非法值时回退内置基线，floor 语义仍然成立。
+	svc := NewIdentityService(&stubIdentityCache{}, calmStore())
+	for _, ua := range []string{"claude-cli/2.1.100", "claude-cli/9.9.9", "claude-cli/99.0.0"} {
+		fp, err := svc.GetOrCreateFingerprint(context.Background(), 1, headersWithUA(ua))
+		require.NoError(t, err)
+		require.Equal(t, "claude-cli/"+upgraded+" (external, cli)", fp.UserAgent)
+		require.Equal(t, "0.94.0", fp.StainlessPackageVersion)
+		require.Equal(t, calmTestClientID, fp.ClientID)
+	}
 	withCLIVersionResolverForTest(t, func() string { return "abc" })
-	baselineFloored, changed := floorClaudeCLIUserAgentVersion("claude-cli/1.0.0 (external, cli)")
-	require.True(t, changed)
-	require.Equal(t, "claude-cli/"+claude.CLIVersion()+" (external, cli)", baselineFloored)
+	fp, err := svc.GetOrCreateFingerprint(context.Background(), 1, nil)
+	require.NoError(t, err)
+	require.Equal(t, "claude-cli/"+claude.CLIVersion()+" (external, cli)", fp.UserAgent)
 }
 
-// 注入更高版本后，isAcceptableFingerprintUserAgent 以运行期版本为基准，允许客户端
-// 上报的新版本。
-func TestIsAcceptableFingerprintUserAgent_UsesRuntimeVersion(t *testing.T) {
+func TestFingerprintBundle_RejectsInboundVersionAuthority(t *testing.T) {
 	const upgraded = "9.9.9"
 	withCLIVersionResolverForTest(t, func() string { return upgraded })
-	require.True(t, isAcceptableFingerprintUserAgent("claude-cli/"+upgraded+" (external, cli)"))
-	// 允许的最大主版本超前量是 +2（9.9.9 → 11.x）。
-	require.True(t, isAcceptableFingerprintUserAgent("claude-cli/11.0.0 (external, cli)"))
-	// 超前 +3 会被拒（与静态基线下的既有语义一致，只是基准换成运行期版本）。
-	require.False(t, isAcceptableFingerprintUserAgent("claude-cli/12.0.0 (external, cli)"))
+	svc := NewIdentityService(&stubIdentityCache{}, calmStore())
+	for _, ua := range []string{"claude-cli/9.9.9", "claude-cli/11.0.0", "claude-cli/12.0.0"} {
+		fp, err := svc.GetOrCreateFingerprint(context.Background(), 1, headersWithUA(ua))
+		require.NoError(t, err)
+		require.Equal(t, "claude-cli/"+upgraded+" (external, cli)", fp.UserAgent)
+	}
 }
 
 // defaultFingerprint 现取运行期版本，不再在 init 固化。

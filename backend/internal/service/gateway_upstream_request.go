@@ -11,7 +11,6 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/domain"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/util/urlvalidator"
 	"github.com/google/uuid"
 	"github.com/tidwall/gjson"
@@ -91,16 +90,14 @@ func (s *GatewayService) buildUpstreamRequest(ctx context.Context, c *gin.Contex
 	if s.settingService != nil {
 		enableFP, enableMPT, _ = s.settingService.GetGatewayForwardingSettings(ctx)
 	}
-	if account.IsOAuth() && s.identityService != nil {
+	if account.Platform == PlatformAnthropic && account.IsOAuth() {
 		// 1. 获取或创建指纹（包含随机生成的ClientID）
 		fp, err := s.identityService.GetOrCreateFingerprint(ctx, account.ID, clientHeaders)
 		if err != nil {
-			logger.LegacyPrintf("service.gateway", "Warning: failed to get fingerprint for account %d: %v", account.ID, err)
-			// 失败时降级为透传原始headers
+			return nil, nil, ErrClaudeIdentityUnavailable
 		} else {
-			if enableFP {
-				fingerprint = fp
-			}
+			// The legacy FP setting cannot re-enable inbound identity headers.
+			fingerprint = fp
 
 			// 2. 重写metadata.user_id（需要指纹中的ClientID和账号的account_uuid）
 			// 如果启用了会话ID伪装，会在重写后替换 session 部分为固定值
@@ -120,6 +117,9 @@ func (s *GatewayService) buildUpstreamRequest(ctx context.Context, c *gin.Contex
 	// 请求体 x-anthropic-billing-header 的 cc_version 都源自这一个字符串，
 	// 避免运行期版本缓存翻转瞬间头/体版本自相矛盾（会被判非正版客户端）。
 	mimicUserAgent := claude.DefaultUserAgent()
+	if fingerprint != nil {
+		mimicUserAgent = fingerprint.UserAgent
+	}
 
 	// Mimicry may override the cached User-Agent later, even without a fingerprint.
 	if billingUA := effectiveBillingUserAgent(mimicUserAgent, tokenType, mimicClaudeCode, fingerprint); billingUA != "" {

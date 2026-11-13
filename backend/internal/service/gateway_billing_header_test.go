@@ -132,10 +132,12 @@ func TestBuildOAuthRequest_BillingMatchesWireUserAgent(t *testing.T) {
 				cfg := &config.Config{}
 				svc := &GatewayService{cfg: cfg}
 				cachedUA := "claude-cli/2.9.0 (external, cli)"
-				if tc.identity {
-					svc.identityService = NewIdentityService(&stubIdentityCache{fingerprint: &Fingerprint{
-						UserAgent: cachedUA, ClientID: "test-client", UpdatedAt: time.Now().Unix(),
-					}})
+				svc.identityService = NewIdentityService(&stubIdentityCache{fingerprint: &Fingerprint{
+					UserAgent: cachedUA, ClientID: "test-client", UpdatedAt: time.Now().Unix(),
+				}}, calmStore())
+				if !tc.identity {
+					// Identity authority is mandatory even when Redis has no entry.
+					svc.identityService = NewIdentityService(&stubIdentityCache{}, calmStore())
 				}
 				if tc.disableFP {
 					svc.settingService = NewSettingService(&gatewayTTLSettingRepo{data: map[string]string{
@@ -154,17 +156,14 @@ func TestBuildOAuthRequest_BillingMatchesWireUserAgent(t *testing.T) {
 				}
 				require.NoError(t, err)
 				defer func() { require.NoError(t, req.Body.Close()) }()
-				wantUA := cachedUA
-				if tc.mimic {
-					wantUA = claude.DefaultHeaders()["User-Agent"]
-				}
+				wantUA := claude.DefaultHeaders()["User-Agent"]
 				require.Equal(t, wantUA, getHeaderRaw(req.Header, "User-Agent"))
 				version := ExtractCLIVersion(wantUA)
 				require.Contains(t, gjson.GetBytes(wireBody, "system.0.text").String(),
 					"cc_version="+version+"."+computeClaudeCodeFingerprint(wireBody, version)+";")
 				if !tc.mimic {
-					// Independently calculated with Node.js for the cached 2.9.0 UA.
-					require.Contains(t, gjson.GetBytes(wireBody, "system.0.text").String(), "cc_version=2.9.0.ac8;")
+					require.NotContains(t, gjson.GetBytes(wireBody, "system.0.text").String(), "cc_version=2.9.0.ac8;",
+						"untrusted cached version cannot control billing")
 				}
 				actualBody, err := io.ReadAll(req.Body)
 				require.NoError(t, err)

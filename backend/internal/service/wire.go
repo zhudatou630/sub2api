@@ -236,6 +236,7 @@ func ProvideAccountUsageService(
 	openAIQuotaService *OpenAIQuotaService,
 	cache *UsageCache,
 	identityCache IdentityCache,
+	identityService *IdentityService,
 	tlsFPProfileService *TLSFingerprintProfileService,
 	openAIGatewayService *OpenAIGatewayService,
 ) *AccountUsageService {
@@ -250,6 +251,7 @@ func ProvideAccountUsageService(
 		openAIQuotaService,
 		cache,
 		identityCache,
+		identityService,
 		tlsFPProfileService,
 	)
 	service.agentIdentityWS = openAIGatewayService

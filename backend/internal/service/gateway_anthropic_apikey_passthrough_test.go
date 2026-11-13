@@ -815,6 +815,7 @@ func TestGatewayService_AnthropicOAuth_NotAffectedByAPIKeyPassthroughToggle(t *t
 	}
 
 	require.False(t, account.IsAnthropicAPIKeyPassthroughEnabled())
+	svc.identityService = NewIdentityService(&stubIdentityCache{}, calmStore())
 
 	req, _, err := svc.buildUpstreamRequest(context.Background(), c, account, []byte(`{"model":"claude-3-7-sonnet-20250219"}`), "oauth-token", "oauth", "claude-3-7-sonnet-20250219", true, false)
 	require.NoError(t, err)
@@ -883,6 +884,7 @@ func TestGatewayService_AnthropicOAuthMimic_RewritesSystemWithBillingBlock(t *te
 				},
 			}
 			svc := &GatewayService{
+				identityService:      NewIdentityService(&stubIdentityCache{}, calmStore()),
 				cfg:                  cfg,
 				responseHeaderFilter: compileResponseHeaderFilter(cfg),
 				httpUpstream:         upstream,
@@ -995,6 +997,7 @@ func TestGatewayService_AnthropicOAuthRealClaudeCodeHaiku_PreservesClientHeaders
 		httpUpstream:         upstream,
 		rateLimitService:     &RateLimitService{},
 		deferredService:      &DeferredService{},
+		identityService:      NewIdentityService(&stubIdentityCache{}, calmStore()),
 	}
 	account := &Account{
 		ID: 302, Name: "anthropic-real-cc", Platform: PlatformAnthropic, Type: AccountTypeOAuth, Concurrency: 1,
@@ -1006,7 +1009,8 @@ func TestGatewayService_AnthropicOAuthRealClaudeCodeHaiku_PreservesClientHeaders
 	require.NotNil(t, result)
 	require.NotNil(t, upstream.lastReq)
 	require.Equal(t, c.Request.Header.Get("User-Agent"), getHeaderRaw(upstream.lastReq.Header, "User-Agent"))
-	require.Equal(t, "real-client-package", getHeaderRaw(upstream.lastReq.Header, "X-Stainless-Package-Version"))
+	require.Equal(t, defaultFingerprint().StainlessPackageVersion, getHeaderRaw(upstream.lastReq.Header, "X-Stainless-Package-Version"),
+		"even native Claude Code cannot override the server-owned SDK bundle")
 	require.Equal(t, clientBeta, getHeaderRaw(upstream.lastReq.Header, "anthropic-beta"))
 	require.Empty(t, getHeaderRaw(upstream.lastReq.Header, "x-client-request-id"), "真实 CC 不应被强制写入 mimic request id")
 	require.Equal(t, gjson.GetBytes(body, "system").Raw, gjson.GetBytes(upstream.lastBody, "system").Raw)
@@ -1054,6 +1058,7 @@ func TestGatewayService_AnthropicOAuth_SystemPromptInjectionCanBeDisabled(t *tes
 		rateLimitService:     &RateLimitService{},
 		deferredService:      &DeferredService{},
 		settingService:       settingService,
+		identityService:      NewIdentityService(&stubIdentityCache{}, calmStore()),
 	}
 
 	account := &Account{
