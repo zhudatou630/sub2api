@@ -1,3 +1,5 @@
+> **维护分支说明（`calm`）：** 本 fork 在上游基础上维护 Claude 账号身份持久化与服务端统一客户端声明，初始基线为 0.2.21，非官方发行版。**旧实例不能直接覆盖升级，须先核实并迁移现有身份。** 维护、测试和跟进上游的方法见 [维护指南](docs/CALM_FORK.md)。
+
 <div align="center">
 
 <img src="assets/logo.svg" alt="Sub2API Logo" width="128" />

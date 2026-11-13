@@ -1,3 +1,5 @@
+> **Maintained fork (`calm` branch):** adds durable Claude account identities and server-owned fingerprint bundles. Based initially on upstream 0.2.21; not an official release. **Existing installations need verified identity migration before use.** See [fork maintenance and upgrade notes](docs/CALM_FORK.md).
+
 <div align="center">
 
 <img src="assets/logo.svg" alt="Sub2API Logo" width="128" />

@@ -166,3 +166,21 @@ issues/
 .vite/
 # 本地闭源插件开发目录及构建产物不进入 Sub2API 仓库
 /plugins/
+
+# Calm fork: explicitly publish only the maintenance guide and test entrypoint.
+!AGENTS.md
+!docs/CALM_FORK.md
+!scripts/
+scripts/*
+!scripts/calm/
+scripts/calm/*
+!scripts/calm/check.sh
+
+# Installation-specific material and generated artifacts stay outside Git.
+/artifacts/
+/backups/
+/secrets/
+/data/
+.env.*
+!.env.example
+!**/.env.example
