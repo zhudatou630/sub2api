@@ -11,6 +11,7 @@ const {
   deleteBackup,
   listBackups,
   getDownloadURL,
+  restoreBackup,
 } = vi.hoisted(() => ({
   getS3Config: vi.fn(),
   getImageStorageConfig: vi.fn(),
@@ -19,6 +20,7 @@ const {
   deleteBackup: vi.fn(),
   listBackups: vi.fn(),
   getDownloadURL: vi.fn(),
+  restoreBackup: vi.fn(),
 }))
 
 vi.mock('@/api', () => ({
@@ -37,7 +39,7 @@ vi.mock('@/api', () => ({
       getBackup: vi.fn(),
       deleteBackup,
       getDownloadURL,
-      restoreBackup: vi.fn(),
+      restoreBackup,
     },
   },
 }))
@@ -99,6 +101,7 @@ describe('admin BackupView', () => {
     deleteBackup.mockReset().mockResolvedValue(undefined)
     listBackups.mockResolvedValue({ items: [] })
     getDownloadURL.mockReset()
+    restoreBackup.mockReset()
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
   })
 
@@ -127,6 +130,27 @@ describe('admin BackupView', () => {
       vi.clearAllTimers()
       vi.useRealTimers()
     }
+  })
+
+  it('keeps restore disabled for completed legacy and split backups without prompting or sending requests', async () => {
+    listBackups.mockResolvedValue({ items: [baseRecord('legacy'), baseRecord('split', [{ index: 1 }])] })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const prompt = vi.spyOn(window, 'prompt').mockReturnValue('synthetic-password')
+    const wrapper = mountBackupView()
+    await flushPromises()
+
+    const buttons = wrapper.findAll('button').filter(button => button.text() === 'admin.backup.actions.restore')
+    expect(buttons).toHaveLength(2)
+    for (const button of buttons) {
+      expect(button.attributes('disabled')).toBeDefined()
+      await button.trigger('click')
+    }
+    await flushPromises()
+    expect(confirm).not.toHaveBeenCalled()
+    expect(prompt).not.toHaveBeenCalled()
+    expect(restoreBackup).not.toHaveBeenCalled()
+    expect(wrapper.findAll('button').filter(button => button.text() === 'admin.backup.actions.download')
+      .every(button => button.attributes('disabled') === undefined)).toBe(true)
   })
 
   it('显示分卷数并在下载时列出每个分卷链接', async () => {

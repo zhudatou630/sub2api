@@ -8,7 +8,7 @@ import { ref, computed } from 'vue'
 import type { Toast, ToastType, PublicSettings } from '@/types'
 import { i18n } from '@/i18n'
 import {
-  checkUpdates as checkUpdatesAPI,
+  getVersion as getVersionAPI,
   type VersionInfo,
   type ReleaseInfo
 } from '@/api/admin/system'
@@ -260,7 +260,16 @@ export const useAppStore = defineStore('app', () => {
 
     versionLoading.value = true
     try {
-      const data = await checkUpdatesAPI(force)
+      // Read only the deployed build version. Never probe upstream releases,
+      // even on a forced refresh; an upstream binary would discard fork patches.
+      const { version } = await getVersionAPI()
+      const data: VersionInfo = {
+        current_version: version,
+        latest_version: version,
+        has_update: false,
+        build_type: 'source',
+        cached: false
+      }
       currentVersion.value = data.current_version
       latestVersion.value = data.latest_version
       hasUpdate.value = data.has_update

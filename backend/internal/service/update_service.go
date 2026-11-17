@@ -129,6 +129,19 @@ type GitHubAsset struct {
 	Size               int64  `json:"size"`
 }
 
+// LocalVersionInfo reports this build without consulting Redis or GitHub. Web
+// clients must use this instead of the upstream updater: upstream binaries do
+// not preserve this fork's identity guarantees.
+func (s *UpdateService) LocalVersionInfo() *UpdateInfo {
+	return &UpdateInfo{
+		CurrentVersion: s.currentVersion,
+		LatestVersion:  s.currentVersion,
+		HasUpdate:      false,
+		BuildType:      s.buildType,
+		Warning:        "Web/API updates are disabled in this fork",
+	}
+}
+
 // CheckUpdate checks for available updates
 func (s *UpdateService) CheckUpdate(ctx context.Context, force bool) (*UpdateInfo, error) {
 	// Try cache first

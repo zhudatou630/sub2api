@@ -119,6 +119,25 @@ function deferred<T>() {
   return { promise, resolve, reject }
 }
 
+describe('UsageFilters — destructive maintenance policy', () => {
+  it('does not emit cleanup while keeping refresh and export usable', async () => {
+    const wrapper = mountFilters()
+    await wrapper.setProps({ showActions: true, mode: 'usage' })
+    await flushPromises()
+    const buttons = wrapper.findAll('button')
+    const cleanup = buttons.find(button => button.text() === 'Cleanup')!
+    expect(cleanup.attributes('disabled')).toBeDefined()
+    await cleanup.trigger('click')
+    expect(wrapper.emitted('cleanup')).toBeUndefined()
+
+    await buttons.find(button => button.text() === 'Refresh')!.trigger('click')
+    await buttons.find(button => button.text() === 'Export')!.trigger('click')
+    expect(wrapper.emitted('refresh')).toHaveLength(1)
+    expect(wrapper.emitted('export')).toHaveLength(1)
+    wrapper.unmount()
+  })
+})
+
 describe('UsageFilters — user search dropdown', () => {
   beforeEach(() => {
     vi.useFakeTimers()

@@ -25,7 +25,7 @@
 ## 本地开发与验证
 
 技术栈：Go / Gin / Ent、Vue 3 / Vite / TailwindCSS、PostgreSQL 15+、Redis 7+。
-Go 使用 [`backend/go.mod`](backend/go.mod) 要求的精确版本（当前为 1.27.3），前端使用 pnpm 和仓库锁文件，不为编译方便降级依赖。
+Go 使用 [`backend/go.mod`](backend/go.mod) 要求的精确版本（当前为 1.27.4），前端使用 pnpm 和仓库锁文件，不为编译方便降级依赖。
 
 前端开发（在 `frontend/` 执行）：
 

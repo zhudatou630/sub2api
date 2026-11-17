@@ -728,7 +728,7 @@ export default {
         errorLogRetentionDays: 'Error Log Retention Days',
         minuteMetricsRetentionDays: 'Minute Metrics Retention Days',
         hourlyMetricsRetentionDays: 'Hourly Metrics Retention Days',
-        retentionDaysHint: 'Recommended 7-90 days; longer periods consume more storage. Set to 0 to wipe all history on every scheduled cleanup',
+        retentionDaysHint: 'Recommended 7-90 days. In this fork, 0 skips cleanup for that target; it never wipes history',
         aggregation: 'Pre-aggregation Tasks',
         enableAggregation: 'Enable Pre-aggregation',
         aggregationHint: 'Pre-aggregation improves query performance for long time windows',

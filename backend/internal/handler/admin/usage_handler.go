@@ -1,7 +1,6 @@
 package admin
 
 import (
-	"context"
 	"net/http"
 	"strconv"
 	"strings"
@@ -40,21 +39,6 @@ func NewUsageHandler(
 		adminService:   adminService,
 		cleanupService: cleanupService,
 	}
-}
-
-// CreateUsageCleanupTaskRequest represents cleanup task creation request
-type CreateUsageCleanupTaskRequest struct {
-	StartDate   string  `json:"start_date"`
-	EndDate     string  `json:"end_date"`
-	UserID      *int64  `json:"user_id"`
-	APIKeyID    *int64  `json:"api_key_id"`
-	AccountID   *int64  `json:"account_id"`
-	GroupID     *int64  `json:"group_id"`
-	Model       *string `json:"model"`
-	RequestType *string `json:"request_type"`
-	Stream      *bool   `json:"stream"`
-	BillingType *int8   `json:"billing_type"`
-	Timezone    string  `json:"timezone"`
 }
 
 // List handles listing all usage records with filters
@@ -488,133 +472,10 @@ func (h *UsageHandler) ListCleanupTasks(c *gin.Context) {
 	response.Paginated(c, out, result.Total, page, pageSize)
 }
 
-// CreateCleanupTask handles creating a usage cleanup task
+// CreateCleanupTask is permanently disabled before request parsing or store access.
 // POST /api/v1/admin/usage/cleanup-tasks
 func (h *UsageHandler) CreateCleanupTask(c *gin.Context) {
-	if h.cleanupService == nil {
-		response.Error(c, http.StatusServiceUnavailable, "Usage cleanup service unavailable")
-		return
-	}
-	subject, ok := middleware.GetAuthSubjectFromContext(c)
-	if !ok || subject.UserID <= 0 {
-		response.Unauthorized(c, "Unauthorized")
-		return
-	}
-
-	var req CreateUsageCleanupTaskRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "Invalid request: "+err.Error())
-		return
-	}
-	req.StartDate = strings.TrimSpace(req.StartDate)
-	req.EndDate = strings.TrimSpace(req.EndDate)
-	if req.StartDate == "" || req.EndDate == "" {
-		response.BadRequest(c, "start_date and end_date are required")
-		return
-	}
-
-	startTime, err := timezone.ParseInUserLocation("2006-01-02", req.StartDate, req.Timezone)
-	if err != nil {
-		response.BadRequest(c, "Invalid start_date format, use YYYY-MM-DD")
-		return
-	}
-	endTime, err := timezone.ParseInUserLocation("2006-01-02", req.EndDate, req.Timezone)
-	if err != nil {
-		response.BadRequest(c, "Invalid end_date format, use YYYY-MM-DD")
-		return
-	}
-	endTime = endTime.Add(24*time.Hour - time.Nanosecond)
-
-	var requestType *int16
-	stream := req.Stream
-	if req.RequestType != nil {
-		parsed, err := service.ParseUsageRequestType(*req.RequestType)
-		if err != nil {
-			response.BadRequest(c, err.Error())
-			return
-		}
-		value := int16(parsed)
-		requestType = &value
-		stream = nil
-	}
-
-	filters := service.UsageCleanupFilters{
-		StartTime:   startTime,
-		EndTime:     endTime,
-		UserID:      req.UserID,
-		APIKeyID:    req.APIKeyID,
-		AccountID:   req.AccountID,
-		GroupID:     req.GroupID,
-		Model:       req.Model,
-		RequestType: requestType,
-		Stream:      stream,
-		BillingType: req.BillingType,
-	}
-
-	var userID any
-	if filters.UserID != nil {
-		userID = *filters.UserID
-	}
-	var apiKeyID any
-	if filters.APIKeyID != nil {
-		apiKeyID = *filters.APIKeyID
-	}
-	var accountID any
-	if filters.AccountID != nil {
-		accountID = *filters.AccountID
-	}
-	var groupID any
-	if filters.GroupID != nil {
-		groupID = *filters.GroupID
-	}
-	var model any
-	if filters.Model != nil {
-		model = *filters.Model
-	}
-	var streamValue any
-	if filters.Stream != nil {
-		streamValue = *filters.Stream
-	}
-	var requestTypeName any
-	if filters.RequestType != nil {
-		requestTypeName = service.RequestTypeFromInt16(*filters.RequestType).String()
-	}
-	var billingType any
-	if filters.BillingType != nil {
-		billingType = *filters.BillingType
-	}
-
-	idempotencyPayload := struct {
-		OperatorID int64                         `json:"operator_id"`
-		Body       CreateUsageCleanupTaskRequest `json:"body"`
-	}{
-		OperatorID: subject.UserID,
-		Body:       req,
-	}
-	executeAdminIdempotentJSON(c, "admin.usage.cleanup_tasks.create", idempotencyPayload, service.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
-		logger.LegacyPrintf("handler.admin.usage", "[UsageCleanup] 请求创建清理任务: operator=%d start=%s end=%s user_id=%v api_key_id=%v account_id=%v group_id=%v model=%v request_type=%v stream=%v billing_type=%v tz=%q",
-			subject.UserID,
-			filters.StartTime.Format(time.RFC3339),
-			filters.EndTime.Format(time.RFC3339),
-			userID,
-			apiKeyID,
-			accountID,
-			groupID,
-			model,
-			requestTypeName,
-			streamValue,
-			billingType,
-			req.Timezone,
-		)
-
-		task, err := h.cleanupService.CreateTask(ctx, filters, subject.UserID)
-		if err != nil {
-			logger.LegacyPrintf("handler.admin.usage", "[UsageCleanup] 创建清理任务失败: operator=%d err=%v", subject.UserID, err)
-			return nil, err
-		}
-		logger.LegacyPrintf("handler.admin.usage", "[UsageCleanup] 清理任务已创建: task=%d operator=%d status=%s", task.ID, subject.UserID, task.Status)
-		return dto.UsageCleanupTaskFromService(task), nil
-	})
+	RejectDangerousMaintenance(c)
 }
 
 // CancelCleanupTask handles canceling a usage cleanup task

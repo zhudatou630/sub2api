@@ -1097,6 +1097,15 @@ func (s *AccountTestService) buildAnthropicUpstreamModelsRequest(ctx context.Con
 		)
 	}
 
+	var fingerprint *Fingerprint
+	if account.IsOAuth() {
+		var err error
+		fingerprint, err = s.identityService.GetOrCreateFingerprint(ctx, account.ID, nil)
+		if err != nil {
+			return nil, ErrClaudeIdentityUnavailable
+		}
+	}
+
 	baseURL := "https://api.anthropic.com"
 	authHeaderName := ""
 	authHeaderValue := ""
@@ -1145,6 +1154,9 @@ func (s *AccountTestService) buildAnthropicUpstreamModelsRequest(ctx context.Con
 	}
 	for key, value := range claude.DefaultHeaders() {
 		req.Header.Set(key, value)
+	}
+	if fingerprint != nil {
+		s.identityService.ApplyFingerprint(req, fingerprint)
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("anthropic-version", "2023-06-01")
@@ -1434,10 +1446,7 @@ func buildVertexPublisherModelsURL(location, pageToken string) (string, error) {
 	if !vertexLocationPattern.MatchString(location) {
 		return "", fmt.Errorf("invalid vertex location: %s", location)
 	}
-	host := location + "-aiplatform.googleapis.com"
-	if location == "global" {
-		host = vertexGlobalHost
-	}
+	host := vertexAPIHost(location)
 	query := url.Values{"pageSize": []string{strconv.Itoa(vertexPublisherModelsPageSize)}}
 	if pageToken != "" {
 		query.Set("pageToken", pageToken)

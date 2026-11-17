@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+	"strings"
 	"testing"
 	"time"
 )
@@ -16,7 +18,7 @@ func TestOpsCleanupPlan(t *testing.T) {
 		wantCutoff   time.Time
 	}{
 		{name: "negative skips", days: -1, wantOK: false},
-		{name: "zero truncates", days: 0, wantOK: true, wantTruncate: true},
+		{name: "zero skips instead of truncating", days: 0, wantOK: false},
 		{name: "positive yields past cutoff", days: 7, wantOK: true, wantCutoff: now.AddDate(0, 0, -7)},
 	}
 
@@ -36,6 +38,13 @@ func TestOpsCleanupPlan(t *testing.T) {
 				t.Fatalf("cutoff = %v, want %v", cutoff, tc.wantCutoff)
 			}
 		})
+	}
+}
+
+func TestCalmOpsCleanupRejectsTruncateBeforeDatabase(t *testing.T) {
+	count, err := opsCleanupRunOne(context.Background(), nil, true, time.Time{}, "synthetic_table", "created_at", false, 10)
+	if err == nil || !strings.Contains(err.Error(), "destructive maintenance is disabled") || count != 0 {
+		t.Fatalf("truncate must be rejected before reaching a database: count=%d err=%v", count, err)
 	}
 }
 

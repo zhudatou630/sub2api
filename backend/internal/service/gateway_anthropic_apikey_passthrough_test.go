@@ -959,7 +959,7 @@ func TestGatewayService_AnthropicOAuthMimic_RewritesSystemWithBillingBlock(t *te
 	}
 }
 
-func TestGatewayService_AnthropicOAuthRealClaudeCodeHaiku_PreservesClientHeadersAndBody(t *testing.T) {
+func TestGatewayService_AnthropicOAuthRealClaudeCodeHaiku_PreservesContentButControlsIdentity(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	metadataUserID := FormatMetadataUserID(
@@ -997,7 +997,7 @@ func TestGatewayService_AnthropicOAuthRealClaudeCodeHaiku_PreservesClientHeaders
 		httpUpstream:         upstream,
 		rateLimitService:     &RateLimitService{},
 		deferredService:      &DeferredService{},
-		identityService:      NewIdentityService(&stubIdentityCache{}, calmStore()),
+		identityService:      NewIdentityService(&stubIdentityCache{}, &calmMemoryStore{ids: map[int64]string{302: calmTestClientID}}),
 	}
 	account := &Account{
 		ID: 302, Name: "anthropic-real-cc", Platform: PlatformAnthropic, Type: AccountTypeOAuth, Concurrency: 1,
@@ -1015,7 +1015,11 @@ func TestGatewayService_AnthropicOAuthRealClaudeCodeHaiku_PreservesClientHeaders
 	require.Empty(t, getHeaderRaw(upstream.lastReq.Header, "x-client-request-id"), "真实 CC 不应被强制写入 mimic request id")
 	require.Equal(t, gjson.GetBytes(body, "system").Raw, gjson.GetBytes(upstream.lastBody, "system").Raw)
 	require.Equal(t, gjson.GetBytes(body, "messages").Raw, gjson.GetBytes(upstream.lastBody, "messages").Raw)
-	require.Equal(t, metadataUserID, gjson.GetBytes(upstream.lastBody, "metadata.user_id").String())
+	metadata := ParseMetadataUserID(gjson.GetBytes(upstream.lastBody, "metadata.user_id").String())
+	require.NotNil(t, metadata)
+	require.Equal(t, calmTestClientID, metadata.DeviceID, "native clients cannot override the durable identity")
+	require.Empty(t, metadata.AccountUUID, "missing account_uuid must not forward the downstream account")
+	require.Equal(t, generateUUIDFromSeed("302::123e4567-e89b-42d3-a456-426614174000"), metadata.SessionID)
 	require.True(t, gjson.GetBytes(upstream.lastBody, "context_management").Exists())
 	require.NotContains(t, string(upstream.lastBody), "x-anthropic-billing-header:")
 }

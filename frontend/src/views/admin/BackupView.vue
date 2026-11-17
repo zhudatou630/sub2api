@@ -258,7 +258,8 @@
                       v-if="record.status === 'completed'"
                       type="button"
                       class="btn btn-secondary btn-xs"
-                      :disabled="restoringId === record.id"
+                      disabled
+                      title="Web/API maintenance is disabled in this fork"
                       @click="restoreBackup(record.id)"
                     >
                       {{ restoringId === record.id ? t('common.loading') : t('admin.backup.actions.restore') }}

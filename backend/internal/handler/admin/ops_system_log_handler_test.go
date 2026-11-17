@@ -168,8 +168,8 @@ func TestOpsSystemLogHandler_CleanupUnauthorized(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/logs/cleanup", bytes.NewBufferString(`{"request_id":"r1"}`))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("status=%d, want 401", w.Code)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("status=%d, want 403", w.Code)
 	}
 }
 
@@ -182,8 +182,8 @@ func TestOpsSystemLogHandler_CleanupInvalidPayload(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/logs/cleanup", bytes.NewBufferString(`{bad-json`))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("status=%d, want 400", w.Code)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("status=%d, want 403", w.Code)
 	}
 }
 
@@ -196,8 +196,8 @@ func TestOpsSystemLogHandler_CleanupInvalidTime(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/logs/cleanup", bytes.NewBufferString(`{"start_time":"bad","request_id":"r1"}`))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("status=%d, want 400", w.Code)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("status=%d, want 403", w.Code)
 	}
 }
 
@@ -210,8 +210,8 @@ func TestOpsSystemLogHandler_CleanupInvalidEndTime(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/logs/cleanup", bytes.NewBufferString(`{"end_time":"bad","request_id":"r1"}`))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("status=%d, want 400", w.Code)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("status=%d, want 403", w.Code)
 	}
 }
 
@@ -224,12 +224,12 @@ func TestOpsSystemLogHandler_CleanupServiceUnavailable(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/logs/cleanup", bytes.NewBufferString(`{"request_id":"r1"}`))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
-	if w.Code != http.StatusServiceUnavailable {
-		t.Fatalf("status=%d, want 503", w.Code)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("status=%d, want 403", w.Code)
 	}
 }
 
-func TestOpsSystemLogHandler_CleanupAcceptsAPIKeyID(t *testing.T) {
+func TestOpsSystemLogHandler_CleanupAPIKeyIDStillForbidden(t *testing.T) {
 	svc := service.NewOpsService(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	h := NewOpsHandler(svc)
 	r := newOpsSystemLogTestRouter(h, true)
@@ -238,12 +238,12 @@ func TestOpsSystemLogHandler_CleanupAcceptsAPIKeyID(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/logs/cleanup", bytes.NewBufferString(`{"api_key_id":123}`))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
-	if w.Code != http.StatusServiceUnavailable {
-		t.Fatalf("status=%d, want 503", w.Code)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("status=%d, want 403", w.Code)
 	}
 }
 
-func TestOpsSystemLogHandler_CleanupAcceptsHost(t *testing.T) {
+func TestOpsSystemLogHandler_CleanupHostStillForbidden(t *testing.T) {
 	repo := &opsSystemLogCaptureRepo{}
 	svc := service.NewOpsService(repo, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	h := NewOpsHandler(svc)
@@ -253,11 +253,11 @@ func TestOpsSystemLogHandler_CleanupAcceptsHost(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/logs/cleanup", bytes.NewBufferString(`{"host":"api-node-1"}`))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Fatalf("status=%d, want 200", w.Code)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("status=%d, want 403", w.Code)
 	}
-	if repo.cleanupFilter == nil || repo.cleanupFilter.Host != "api-node-1" {
-		t.Fatalf("host filter = %+v, want api-node-1", repo.cleanupFilter)
+	if repo.cleanupFilter != nil {
+		t.Fatalf("cleanup must not reach the repository: %+v", repo.cleanupFilter)
 	}
 }
 
@@ -270,8 +270,8 @@ func TestOpsSystemLogHandler_CleanupInvalidAPIKeyID(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/logs/cleanup", bytes.NewBufferString(`{"api_key_id":0}`))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("status=%d, want 400", w.Code)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("status=%d, want 403", w.Code)
 	}
 }
 
@@ -286,8 +286,8 @@ func TestOpsSystemLogHandler_CleanupMonitoringDisabled(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/logs/cleanup", bytes.NewBufferString(`{"request_id":"r1"}`))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("status=%d, want 404", w.Code)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("status=%d, want 403", w.Code)
 	}
 }
 

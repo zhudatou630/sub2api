@@ -728,7 +728,7 @@ export default {
         errorLogRetentionDays: '错误日志保留天数',
         minuteMetricsRetentionDays: '分钟指标保留天数',
         hourlyMetricsRetentionDays: '小时指标保留天数',
-        retentionDaysHint: '建议保留 7-90 天，过长会占用存储空间；填 0 表示每次定时清理时清空所有历史',
+        retentionDaysHint: '建议保留 7-90 天；本 fork 中填 0 会跳过该项清理，不会清空历史',
         aggregation: '预聚合任务',
         enableAggregation: '启用预聚合任务',
         aggregationHint: '预聚合可提升长时间窗口查询性能',

@@ -167,8 +167,9 @@ issues/
 # 本地闭源插件开发目录及构建产物不进入 Sub2API 仓库
 /plugins/
 
-# Calm fork: explicitly publish only the maintenance guide and test entrypoint.
+# Calm fork: explicitly publish only maintenance docs and the test entrypoint.
 !docs/CALM_FORK.md
+!docs/CALM_V0.2.22_REVIEW.md
 !scripts/
 scripts/*
 !scripts/calm/

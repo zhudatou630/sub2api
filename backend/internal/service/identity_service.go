@@ -117,18 +117,27 @@ func (s *IdentityService) ApplyFingerprint(req *http.Request, fp *Fingerprint) {
 	if fp == nil {
 		return
 	}
-	setHeaderRaw(req.Header, "User-Agent", fp.UserAgent)
-	setHeaderRaw(req.Header, "X-Stainless-Lang", fp.StainlessLang)
-	setHeaderRaw(req.Header, "X-Stainless-Package-Version", fp.StainlessPackageVersion)
-	setHeaderRaw(req.Header, "X-Stainless-OS", fp.StainlessOS)
-	setHeaderRaw(req.Header, "X-Stainless-Arch", fp.StainlessArch)
-	setHeaderRaw(req.Header, "X-Stainless-Runtime", fp.StainlessRuntime)
-	setHeaderRaw(req.Header, "X-Stainless-Runtime-Version", fp.StainlessRuntimeVersion)
+	// Own the complete default bundle, not just the version/OS fields. Native
+	// Claude clients and count_tokens also pass whitelisted SDK headers through;
+	// their retry/timeout/x-app declarations must not survive this boundary.
+	headers := claude.DefaultHeaders()
+	headers["User-Agent"] = fp.UserAgent
+	headers["X-Stainless-Lang"] = fp.StainlessLang
+	headers["X-Stainless-Package-Version"] = fp.StainlessPackageVersion
+	headers["X-Stainless-OS"] = fp.StainlessOS
+	headers["X-Stainless-Arch"] = fp.StainlessArch
+	headers["X-Stainless-Runtime"] = fp.StainlessRuntime
+	headers["X-Stainless-Runtime-Version"] = fp.StainlessRuntimeVersion
+	for key, value := range headers {
+		setHeaderRaw(req.Header, resolveWireCasing(key), value)
+	}
 }
 
 // RewriteUserID preserves the existing metadata and session derivation algorithm.
+// A missing account UUID is represented by an empty account field, not permission
+// to forward a downstream device ID in place of the durable ClientID.
 func (s *IdentityService) RewriteUserID(body []byte, accountID int64, accountUUID, cachedClientID, fingerprintUA string) ([]byte, error) {
-	if len(body) == 0 || accountUUID == "" || cachedClientID == "" {
+	if len(body) == 0 || cachedClientID == "" {
 		return body, nil
 	}
 	metadata := gjson.GetBytes(body, "metadata")
@@ -195,7 +204,7 @@ func (s *IdentityService) RewriteUserIDWithMasking(ctx context.Context, body []b
 	}
 	maskedSessionID, err := s.cache.GetMaskedSessionID(ctx, account.ID)
 	if err != nil {
-		logger.LegacyPrintf("service.identity", "Warning: failed to get masked session ID for account %d: %v", account.ID, err)
+		logger.LegacyPrintf("service.identity", "Warning: failed to get masked session ID for account %d", account.ID)
 		return newBody, nil
 	}
 	if maskedSessionID == "" {
@@ -203,7 +212,7 @@ func (s *IdentityService) RewriteUserIDWithMasking(ctx context.Context, body []b
 		logger.LegacyPrintf("service.identity", "Generated masked session ID for account %d", account.ID)
 	}
 	if err := s.cache.SetMaskedSessionID(ctx, account.ID, maskedSessionID); err != nil {
-		logger.LegacyPrintf("service.identity", "Warning: failed to set masked session ID for account %d: %v", account.ID, err)
+		logger.LegacyPrintf("service.identity", "Warning: failed to set masked session ID for account %d", account.ID)
 	}
 	version := ExtractCLIVersion(fingerprintUA)
 	newUserID := FormatMetadataUserID(uidParsed.DeviceID, uidParsed.AccountUUID, maskedSessionID, version)

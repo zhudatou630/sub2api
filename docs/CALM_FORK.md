@@ -8,6 +8,7 @@
 - `calm`: maintained fork branch.
 - Initial base: upstream commit `10ba8f9b4dc2e6023d4a9879ab77b21841babd10`, release 0.2.21.
 - Initial source checkpoint: `calm-v0.2.21-identity.1` (application version `0.2.21-calm.1`).
+- Upgrade candidate: upstream `v0.2.22`, commit `b0fa9f3e6eeab1968a53e1289b69daa4bb40ca2b`. This is a source integration target, not a published fork release or evidence of deployment.
 - Remotes: `origin` is this fork; `upstream` is the official repository.
 
 The initial feature commit imports the already-reviewed identity patch without changing its source or tests. Later commits document maintenance. A source tag identifies code; it does not by itself publish or deploy a binary.
@@ -39,7 +40,7 @@ Claude fingerprint Redis keys are no longer authoritative and may expire normall
 
 ## Local verification
 
-Use the exact Go version required by `backend/go.mod` (initially Go 1.27.3), without downgrading dependencies:
+Use the exact Go version required by `backend/go.mod` (currently Go 1.27.4 for the v0.2.22 candidate), without downgrading dependencies:
 
 ```bash
 bash scripts/calm/check.sh
@@ -60,11 +61,11 @@ Before a release, also compile the full application and run broader gateway/regr
 
 ## Building
 
-Use the upstream frontend/backend build process and Dockerfile. The initial source requires Go 1.27.3 and a Docker builder with BuildKit support. Build the frontend with its frozen lockfile before the backend's `embed` build. Pass an explicit fork version rather than relying on the inherited `cmd/server/VERSION` file:
+Use the upstream frontend/backend build process and Dockerfile. The v0.2.22 candidate requires Go 1.27.4 and a Docker builder with BuildKit support. Build the frontend with its frozen lockfile before the backend's `embed` build. Pass an explicit fork version rather than relying on the inherited `cmd/server/VERSION` file (the upstream tag still contains `0.2.21`). A local, unpublished candidate build can use:
 
 ```bash
 docker build \
-  --build-arg VERSION=0.2.21-calm.1 \
+  --build-arg VERSION=0.2.22-calm.1-dev \
   --build-arg COMMIT="$(git rev-parse HEAD)" \
   -t sub2api-calm:local .
 ```
@@ -83,6 +84,25 @@ git merge --no-ff <reviewed-upstream-tag-or-commit>
 Review conflicts **and semantic changes**, especially identity consumers, constructors/Wire, migrations, default bundles and error handling. Run the tests above, full build and isolated migration/rollback checks. Prefer upstream's equivalent fix when suitable, but preserve existing identities when transitioning implementations.
 
 After review, merge the update branch into `calm` and create a new annotated `calm-*` tag. Keep published history and already-applied migration contents stable; add a new migration for schema changes. Never force-push shared release history, silently overwrite a migration checksum, or deploy merely because a merge was clean.
+
+## v0.2.22 candidate hardening review
+
+- Preserve PostgreSQL identity authority when legacy account identity fields disagree or `account_uuid` is absent. A missing account UUID is not permission to forward a downstream device/account identity.
+- For Anthropic OAuth/setup-token, metadata passthrough no longer bypasses durable identity rewriting. The existing session derivation formula and optional masking remain unchanged, but enabling metadata passthrough no longer preserves the raw downstream session. API-key/non-Claude metadata behavior is retained.
+- Apply the full server-owned default header bundle to native Claude and count_tokens requests. OAuth count_tokens mimicry skips downstream header passthrough like messages, and missing metadata is synthesized from the durable identity using existing derivation helpers.
+- Administrative Claude connection/model probes also use the identity service and stop before sending when identity storage is unavailable, reserved or invalid. These are real-request features in normal use; regression tests use fake upstreams only.
+- Concurrent token-rotation retries re-read identity and fail closed if it becomes invalid. Dependency error text is excluded from the affected retry/session logs.
+- The two upstream `251_*` migrations are distinct filenames and both run even when the higher-numbered fork migration is already recorded. Do not rename them or modify already-applied SQL; the existing migration runner tracks full filenames/checksums, not a numeric high-water mark.
+
+Validation and limitations for this candidate are recorded in [the review report](CALM_V0.2.22_REVIEW.md).
+
+## Web/API maintenance restrictions
+
+The fork disables in-process application updates, rollback/version selection, service restart, whole-database restore, audit-log clearing, creation of usage-cleanup tasks, and manual system-log cleanup. The backend rejects these operations with `403` / `DANGEROUS_MAINTENANCE_DISABLED`; hiding the frontend controls is not the security boundary. Version queries (including the legacy update-check endpoint) return local build metadata without GitHub/cache lookups. There is no administrator toggle to re-enable the operations.
+
+Ops retention values of zero now **skip** cleanup instead of truncating a table, including existing persisted zero values; positive retention periods still expire old records. Review retention and storage needs when adopting this policy. Existing usage-cleanup tasks are not automatically cancelled; inspect and cancel them separately if needed.
+
+Normal account/key administration, backup creation/download/deletion, and positive-period retention remain available. This is not a blanket read-only admin panel. First-install setup retains its initialization restart, guarded against use after installation; it is not the running instance's restart endpoint. Manual deployment remains a separately authorized operation. Backend updater/restore implementations are retained but must not be re-exposed by later merges.
 
 ## Publishing and repository boundaries
 

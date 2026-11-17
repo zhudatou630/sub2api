@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -117,6 +118,11 @@ func TestCalmBuildersStableMetadataAndControlledHeaders(t *testing.T) {
 				for _, ua := range []string{"pi/99.0.0", "claude-cli/99.0.0", "other/1.2.3"} {
 					c := calmGatewayContext()
 					c.Request.Header.Set("User-Agent", ua)
+					for key := range claude.DefaultHeaders() {
+						if key != "User-Agent" {
+							c.Request.Header.Set(key, "untrusted-downstream")
+						}
+					}
 					var req *http.Request
 					var out []byte
 					var err error
@@ -127,8 +133,9 @@ func TestCalmBuildersStableMetadataAndControlledHeaders(t *testing.T) {
 					}
 					require.NoError(t, err)
 					require.NoError(t, req.Body.Close())
-					require.Equal(t, defaultFingerprint().UserAgent, getHeaderRaw(req.Header, "User-Agent"))
-					require.Equal(t, "0.94.0", getHeaderRaw(req.Header, "X-Stainless-Package-Version"))
+					for key, value := range claude.DefaultHeaders() {
+						require.Equal(t, value, getHeaderRaw(req.Header, key), "server-owned bundle header %s", key)
+					}
 					uid := gjson.GetBytes(out, "metadata.user_id").String()
 					parsed := ParseMetadataUserID(uid)
 					require.NotNil(t, parsed)

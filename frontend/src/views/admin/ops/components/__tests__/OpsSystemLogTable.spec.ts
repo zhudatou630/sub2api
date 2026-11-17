@@ -101,7 +101,7 @@ describe('OpsSystemLogTable host support', () => {
     mockUpdateRuntimeLogConfig.mockImplementation(async config => config)
   })
 
-  it('renders the host and sends it with list and cleanup filters', async () => {
+  it('renders and filters by host without enabling destructive cleanup', async () => {
     const wrapper = mount(OpsSystemLogTable, {
       global: {
         stubs: {
@@ -127,10 +127,13 @@ describe('OpsSystemLogTable host support', () => {
 
     const cleanupButton = wrapper.findAll('button').find((button) => button.text() === 'admin.ops.systemLogs.cleanCurrentFilters')
     expect(cleanupButton).toBeDefined()
+    expect(cleanupButton!.attributes('disabled')).toBeDefined()
     await cleanupButton!.trigger('click')
     await flushPromises()
 
-    expect(mockCleanupSystemLogs).toHaveBeenCalledWith(expect.objectContaining({ host: 'api-node-2' }))
+    expect(mockCleanupSystemLogs).not.toHaveBeenCalled()
+    expect(window.confirm).not.toHaveBeenCalled()
+    wrapper.unmount()
   })
 
   it('keeps database access-log persistence opt-in', async () => {

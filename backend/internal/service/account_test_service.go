@@ -147,6 +147,7 @@ type AccountTestService struct {
 	cfg                       *config.Config
 	settingService            *SettingService
 	tlsFPProfileService       *TLSFingerprintProfileService
+	identityService           *IdentityService
 	modelMetadataRegistryMu   sync.Mutex
 	modelMetadataRegistry     map[string]modelsDevProvider
 	modelMetadataRegistryAt   time.Time
@@ -552,6 +553,15 @@ func (s *AccountTestService) testClaudeAccountConnection(c *gin.Context, account
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Unsupported account type: %s", account.Type))
 	}
 
+	var fingerprint *Fingerprint
+	if account.Platform == PlatformAnthropic && account.IsOAuth() {
+		var err error
+		fingerprint, err = s.identityService.GetOrCreateFingerprint(ctx, account.ID, nil)
+		if err != nil {
+			return s.sendErrorAndEnd(c, ErrClaudeIdentityUnavailable.Error())
+		}
+	}
+
 	// Set SSE headers
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache")
@@ -563,6 +573,12 @@ func (s *AccountTestService) testClaudeAccountConnection(c *gin.Context, account
 	payload, err := createTestPayload(testModelID)
 	if err != nil {
 		return s.sendErrorAndEnd(c, "Failed to create test payload")
+	}
+	if fingerprint != nil {
+		payload["metadata"] = map[string]string{"user_id": FormatMetadataUserID(
+			fingerprint.ClientID, strings.TrimSpace(account.GetExtraString("account_uuid")),
+			generateRandomUUID(), ExtractCLIVersion(fingerprint.UserAgent),
+		)}
 	}
 	payloadBytes, _ := json.Marshal(payload)
 
@@ -581,6 +597,9 @@ func (s *AccountTestService) testClaudeAccountConnection(c *gin.Context, account
 	// Apply Claude Code client headers
 	for key, value := range claude.DefaultHeaders() {
 		req.Header.Set(key, value)
+	}
+	if fingerprint != nil {
+		s.identityService.ApplyFingerprint(req, fingerprint)
 	}
 
 	// Set authentication header
@@ -2600,7 +2619,7 @@ func (s *AccountTestService) buildGeminiOAuthRequest(ctx context.Context, accoun
 }
 
 func (s *AccountTestService) buildGeminiServiceAccountRequest(ctx context.Context, account *Account, modelID string, payload []byte) (*http.Request, error) {
-	fullURL, err := buildVertexGeminiAccountURL(account, modelID, "streamGenerateContent", true)
+	fullURL, err := buildVertexGeminiAccountURL(account, modelID, "streamGenerateContent", true, "")
 	if err != nil {
 		return nil, err
 	}

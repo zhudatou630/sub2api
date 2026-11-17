@@ -132,7 +132,8 @@ func TestUsageHandlerCreateCleanupTaskUnauthorized(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, req)
 
-	require.Equal(t, http.StatusUnauthorized, recorder.Code)
+	require.Equal(t, http.StatusForbidden, recorder.Code)
+	require.Contains(t, recorder.Body.String(), `"reason":"DANGEROUS_MAINTENANCE_DISABLED"`)
 }
 
 func TestUsageHandlerCreateCleanupTaskUnavailable(t *testing.T) {
@@ -143,7 +144,8 @@ func TestUsageHandlerCreateCleanupTaskUnavailable(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, req)
 
-	require.Equal(t, http.StatusServiceUnavailable, recorder.Code)
+	require.Equal(t, http.StatusForbidden, recorder.Code)
+	require.Contains(t, recorder.Body.String(), `"reason":"DANGEROUS_MAINTENANCE_DISABLED"`)
 }
 
 func TestUsageHandlerCreateCleanupTaskBindError(t *testing.T) {
@@ -157,7 +159,8 @@ func TestUsageHandlerCreateCleanupTaskBindError(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, req)
 
-	require.Equal(t, http.StatusBadRequest, recorder.Code)
+	require.Equal(t, http.StatusForbidden, recorder.Code)
+	require.Empty(t, repo.created)
 }
 
 func TestUsageHandlerCreateCleanupTaskMissingRange(t *testing.T) {
@@ -178,7 +181,8 @@ func TestUsageHandlerCreateCleanupTaskMissingRange(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, req)
 
-	require.Equal(t, http.StatusBadRequest, recorder.Code)
+	require.Equal(t, http.StatusForbidden, recorder.Code)
+	require.Empty(t, repo.created)
 }
 
 func TestUsageHandlerCreateCleanupTaskInvalidDate(t *testing.T) {
@@ -200,7 +204,8 @@ func TestUsageHandlerCreateCleanupTaskInvalidDate(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, req)
 
-	require.Equal(t, http.StatusBadRequest, recorder.Code)
+	require.Equal(t, http.StatusForbidden, recorder.Code)
+	require.Empty(t, repo.created)
 }
 
 func TestUsageHandlerCreateCleanupTaskInvalidEndDate(t *testing.T) {
@@ -222,7 +227,8 @@ func TestUsageHandlerCreateCleanupTaskInvalidEndDate(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, req)
 
-	require.Equal(t, http.StatusBadRequest, recorder.Code)
+	require.Equal(t, http.StatusForbidden, recorder.Code)
+	require.Empty(t, repo.created)
 }
 
 func TestUsageHandlerCreateCleanupTaskInvalidRequestType(t *testing.T) {
@@ -245,7 +251,8 @@ func TestUsageHandlerCreateCleanupTaskInvalidRequestType(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, req)
 
-	require.Equal(t, http.StatusBadRequest, recorder.Code)
+	require.Equal(t, http.StatusForbidden, recorder.Code)
+	require.Empty(t, repo.created)
 }
 
 func TestUsageHandlerCreateCleanupTaskRequestTypePriority(t *testing.T) {
@@ -269,15 +276,9 @@ func TestUsageHandlerCreateCleanupTaskRequestTypePriority(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, req)
 
-	require.Equal(t, http.StatusOK, recorder.Code)
-
-	repo.mu.Lock()
-	defer repo.mu.Unlock()
-	require.Len(t, repo.created, 1)
-	created := repo.created[0]
-	require.NotNil(t, created.Filters.RequestType)
-	require.Equal(t, int16(service.RequestTypeWSV2), *created.Filters.RequestType)
-	require.Nil(t, created.Filters.Stream)
+	require.Equal(t, http.StatusForbidden, recorder.Code)
+	require.Contains(t, recorder.Body.String(), `"reason":"DANGEROUS_MAINTENANCE_DISABLED"`)
+	require.Empty(t, repo.created)
 }
 
 func TestUsageHandlerCreateCleanupTaskWithLegacyStream(t *testing.T) {
@@ -300,18 +301,12 @@ func TestUsageHandlerCreateCleanupTaskWithLegacyStream(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, req)
 
-	require.Equal(t, http.StatusOK, recorder.Code)
-
-	repo.mu.Lock()
-	defer repo.mu.Unlock()
-	require.Len(t, repo.created, 1)
-	created := repo.created[0]
-	require.Nil(t, created.Filters.RequestType)
-	require.NotNil(t, created.Filters.Stream)
-	require.True(t, *created.Filters.Stream)
+	require.Equal(t, http.StatusForbidden, recorder.Code)
+	require.Contains(t, recorder.Body.String(), `"reason":"DANGEROUS_MAINTENANCE_DISABLED"`)
+	require.Empty(t, repo.created)
 }
 
-func TestUsageHandlerCreateCleanupTaskSuccess(t *testing.T) {
+func TestUsageHandlerCreateCleanupTaskValidPayloadStillForbidden(t *testing.T) {
 	repo := &cleanupRepoStub{}
 	cfg := &config.Config{UsageCleanup: config.UsageCleanupConfig{Enabled: true, MaxRangeDays: 31}}
 	cleanupService := service.NewUsageCleanupService(repo, nil, nil, cfg)
@@ -331,24 +326,12 @@ func TestUsageHandlerCreateCleanupTaskSuccess(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, req)
 
-	require.Equal(t, http.StatusOK, recorder.Code)
-
+	require.Equal(t, http.StatusForbidden, recorder.Code)
 	var resp response.Response
 	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
-	require.Equal(t, 0, resp.Code)
-
-	repo.mu.Lock()
-	defer repo.mu.Unlock()
-	require.Len(t, repo.created, 1)
-	created := repo.created[0]
-	require.Equal(t, int64(99), created.CreatedBy)
-	require.NotNil(t, created.Filters.Model)
-	require.Equal(t, "gpt-4", *created.Filters.Model)
-
-	start := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	end := time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC).Add(24*time.Hour - time.Nanosecond)
-	require.True(t, created.Filters.StartTime.Equal(start))
-	require.True(t, created.Filters.EndTime.Equal(end))
+	require.Equal(t, http.StatusForbidden, resp.Code)
+	require.Equal(t, "DANGEROUS_MAINTENANCE_DISABLED", resp.Reason)
+	require.Empty(t, repo.created)
 }
 
 func TestUsageHandlerListCleanupTasksUnavailable(t *testing.T) {
