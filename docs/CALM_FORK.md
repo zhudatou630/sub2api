@@ -6,9 +6,9 @@
 
 - `main`: upstream-derived branch; no local feature development here.
 - `calm`: maintained fork branch.
-- Initial base: upstream commit `10ba8f9b4dc2e6023d4a9879ab77b21841babd10`, release 0.2.21.
-- Initial source checkpoint: `calm-v0.2.21-identity.1` (application version `0.2.21-calm.1`).
-- Upgrade candidate: upstream `v0.2.22`, commit `b0fa9f3e6eeab1968a53e1289b69daa4bb40ca2b`. This is a source integration target, not a published fork release or evidence of deployment.
+- Current base: upstream release 0.2.22, commit `b0fa9f3e6eeab1968a53e1289b69daa4bb40ca2b`.
+- Current source checkpoint: `calm-v0.2.22-identity.1` (application version `0.2.22-calm.1`).
+- Previous base and checkpoint: upstream 0.2.21 `10ba8f9b4dc2e6023d4a9879ab77b21841babd10`, tag `calm-v0.2.21-identity.1` (application version `0.2.21-calm.1`).
 - Remotes: `origin` is this fork; `upstream` is the official repository.
 
 The initial feature commit imports the already-reviewed identity patch without changing its source or tests. Later commits document maintenance. A source tag identifies code; it does not by itself publish or deploy a binary.
@@ -40,7 +40,7 @@ Claude fingerprint Redis keys are no longer authoritative and may expire normall
 
 ## Local verification
 
-Use the exact Go version required by `backend/go.mod` (currently Go 1.27.4 for the v0.2.22 candidate), without downgrading dependencies:
+Use the exact Go version required by `backend/go.mod` (currently Go 1.27.4), without downgrading dependencies:
 
 ```bash
 bash scripts/calm/check.sh
@@ -61,11 +61,11 @@ Before a release, also compile the full application and run broader gateway/regr
 
 ## Building
 
-Use the upstream frontend/backend build process and Dockerfile. The v0.2.22 candidate requires Go 1.27.4 and a Docker builder with BuildKit support. Build the frontend with its frozen lockfile before the backend's `embed` build. Pass an explicit fork version rather than relying on the inherited `cmd/server/VERSION` file (the upstream tag still contains `0.2.21`). A local, unpublished candidate build can use:
+Use the upstream frontend/backend build process and Dockerfile. This source requires Go 1.27.4 and a Docker builder with BuildKit support. Build the frontend with its frozen lockfile before the backend's `embed` build, or build the binary with `-tags embed` against an already-built `internal/web/dist`. Pass an explicit fork version rather than relying on the inherited `cmd/server/VERSION` file (the upstream tag still contains `0.2.21`). Without BuildKit, a verified alternative is to keep the matching official runtime image and replace only `/app/sub2api` with the locally built binary, then record both the runtime digest and the binary hash. A local, unpublished build can use:
 
 ```bash
 docker build \
-  --build-arg VERSION=0.2.22-calm.1-dev \
+  --build-arg VERSION=0.2.22-calm.1 \
   --build-arg COMMIT="$(git rev-parse HEAD)" \
   -t sub2api-calm:local .
 ```
@@ -85,7 +85,7 @@ Review conflicts **and semantic changes**, especially identity consumers, constr
 
 After review, merge the update branch into `calm` and create a new annotated `calm-*` tag. Keep published history and already-applied migration contents stable; add a new migration for schema changes. Never force-push shared release history, silently overwrite a migration checksum, or deploy merely because a merge was clean.
 
-## v0.2.22 candidate hardening review
+## v0.2.22 hardening (tagged `calm-v0.2.22-identity.1`)
 
 - Preserve PostgreSQL identity authority when legacy account identity fields disagree or `account_uuid` is absent. A missing account UUID is not permission to forward a downstream device/account identity.
 - For Anthropic OAuth/setup-token, metadata passthrough no longer bypasses durable identity rewriting. The existing session derivation formula and optional masking remain unchanged, but enabling metadata passthrough no longer preserves the raw downstream session. API-key/non-Claude metadata behavior is retained.
@@ -94,7 +94,7 @@ After review, merge the update branch into `calm` and create a new annotated `ca
 - Concurrent token-rotation retries re-read identity and fail closed if it becomes invalid. Dependency error text is excluded from the affected retry/session logs.
 - The two upstream `251_*` migrations are distinct filenames and both run even when the higher-numbered fork migration is already recorded. Do not rename them or modify already-applied SQL; the existing migration runner tracks full filenames/checksums, not a numeric high-water mark.
 
-Validation and limitations for this candidate are recorded in [the review report](CALM_V0.2.22_REVIEW.md).
+Validation and limitations are recorded in [the review report](CALM_V0.2.22_REVIEW.md). The tag identifies source only; it does not publish an image or deploy anything.
 
 ## Web/API maintenance restrictions
 
