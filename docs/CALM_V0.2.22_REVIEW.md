@@ -1,15 +1,15 @@
-# v0.2.22 integration candidate review
+# v0.2.22 integration review
 
 ## Status and source
 
-This is an unpublished source integration candidate, not a release or deployment approval.
+Merged into `calm` and tagged `calm-v0.2.22-identity.1`. The tag identifies source only: it publishes no image, and image publication and deployment remain separate operations.
 
 - Fork starting point: `6f1edbf8c338338dd036b85161b57ab6eb0ccc24` (`calm`).
 - Reviewed upstream tag: `v0.2.22`.
 - Upstream commit (peeled tag): `b0fa9f3e6eeab1968a53e1289b69daa4bb40ca2b`.
-- Integration branch: `update/v0.2.22`; merge prepared with `--no-ff --no-commit`.
+- Integration branch: `update/v0.2.22`; merged with `--no-ff`.
 - The compact fork README and deletion of translated promotional READMEs are retained. Newly introduced promotional artwork is not restored.
-- No commit, push, release tag, CI publication or deployment was performed as part of this review.
+- This review itself performed no push, tag, CI publication or deployment. Merging, tagging and any deployment were done afterwards as separate authorized steps; CI remains disabled at repository level.
 
 ## Changes beyond upstream
 
