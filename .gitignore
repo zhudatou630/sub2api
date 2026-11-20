@@ -176,6 +176,7 @@ scripts/*
 !scripts/calm/
 scripts/calm/*
 !scripts/calm/check.sh
+!scripts/calm/build-image.sh
 
 # Installation-specific material and generated artifacts stay outside Git.
 # Machine-local agent instructions are deliberately not published.

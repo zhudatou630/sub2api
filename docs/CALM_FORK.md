@@ -70,6 +70,8 @@ docker build \
   -t sub2api-calm:local .
 ```
 
+Without BuildKit, `scripts/calm/build-image.sh <calm-tag> <app-version> <official-image@sha256:digest>` automates the binary-overlay variant: it builds frontend and embedded backend from a clean export of the tag, overlays the binary on the pinned official runtime image of the same upstream version (whose `resources/` must match), records tag/commit/base/hash labels, and verifies the binary hash inside the image without starting the application. It refuses to overwrite an existing version tag.
+
 This builds locally only. A new build is not automatically byte-identical to an existing deployment: record source commit, toolchain, build inputs, binary hash and image identity, and verify the exported/imported artifact on target Docker versions. Production artifact storage and deployment are managed separately from this public repository.
 
 ## Following upstream
