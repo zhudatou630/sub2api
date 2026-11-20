@@ -7,8 +7,8 @@
 - `main`: upstream-derived branch; no local feature development here.
 - `calm`: maintained fork branch.
 - Current base: upstream release 0.2.24, commit `5c2982a81b46e2142d0143d2f83c1ce9c4da1d24` (see [the review report](CALM_V0.2.24_REVIEW.md)).
-- Current source checkpoint: `calm-v0.2.24-identity.1` (application version `0.2.24-calm.1`).
-- Previous checkpoints: upstream 0.2.22 `b0fa9f3e6eeab1968a53e1289b69daa4bb40ca2b`, tag `calm-v0.2.22-identity.1` (application version `0.2.22-calm.1`); upstream 0.2.21 `10ba8f9b4dc2e6023d4a9879ab77b21841babd10`, tag `calm-v0.2.21-identity.1` (application version `0.2.21-calm.1`).
+- Current source checkpoint: `calm-v0.2.24-identity.2` (application version `0.2.24-calm.2`): `.1` plus the image build script and upstream-identical maintenance frontend.
+- Previous checkpoints: `calm-v0.2.24-identity.1` (application version `0.2.24-calm.1`); upstream 0.2.22 `b0fa9f3e6eeab1968a53e1289b69daa4bb40ca2b`, tag `calm-v0.2.22-identity.1` (application version `0.2.22-calm.1`); upstream 0.2.21 `10ba8f9b4dc2e6023d4a9879ab77b21841babd10`, tag `calm-v0.2.21-identity.1` (application version `0.2.21-calm.1`).
 - Remotes: `origin` is this fork; `upstream` is the official repository.
 
 The initial feature commit imports the already-reviewed identity patch without changing its source or tests. Later commits document maintenance. A source tag identifies code; it does not by itself publish or deploy a binary.
@@ -65,7 +65,7 @@ Use the upstream frontend/backend build process and Dockerfile. This source requ
 
 ```bash
 docker build \
-  --build-arg VERSION=0.2.24-calm.1 \
+  --build-arg VERSION=0.2.24-calm.2 \
   --build-arg COMMIT="$(git rev-parse HEAD)" \
   -t sub2api-calm:local .
 ```
