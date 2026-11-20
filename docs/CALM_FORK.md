@@ -100,7 +100,7 @@ Validation and limitations are recorded in [the review report](CALM_V0.2.22_REVI
 
 ## Web/API maintenance restrictions
 
-The fork disables in-process application updates, rollback/version selection, service restart, whole-database restore, audit-log clearing, creation of usage-cleanup tasks, and manual system-log cleanup. The backend rejects these operations with `403` / `DANGEROUS_MAINTENANCE_DISABLED`; hiding the frontend controls is not the security boundary. Version queries (including the legacy update-check endpoint) return local build metadata without GitHub/cache lookups. There is no administrator toggle to re-enable the operations.
+The fork disables in-process application updates, rollback/version selection, service restart, whole-database restore, audit-log clearing, creation of usage-cleanup tasks, and manual system-log cleanup. The backend rejects these operations with `403` / `DANGEROUS_MAINTENANCE_DISABLED`; the frontend is kept identical to upstream to avoid merge conflicts, so some controls (for example the rollback panel or cleanup buttons) may still be visible but are rejected when used. Only the Ops retention hint text differs, because it documents the fork's zero-retention behavior. Version queries (including the legacy update-check endpoint) return local build metadata without GitHub/cache lookups. There is no administrator toggle to re-enable the operations.
 
 Ops retention values of zero now **skip** cleanup instead of truncating a table, including existing persisted zero values; positive retention periods still expire old records. Review retention and storage needs when adopting this policy. Existing usage-cleanup tasks are not automatically cancelled; inspect and cancel them separately if needed.
 
