@@ -170,6 +170,7 @@ issues/
 # Calm fork: explicitly publish only maintenance docs and the test entrypoint.
 !docs/CALM_FORK.md
 !docs/CALM_V0.2.22_REVIEW.md
+!docs/CALM_V0.2.24_REVIEW.md
 !scripts/
 scripts/*
 !scripts/calm/

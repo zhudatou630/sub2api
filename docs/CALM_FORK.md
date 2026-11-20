@@ -9,6 +9,7 @@
 - Current base: upstream release 0.2.22, commit `b0fa9f3e6eeab1968a53e1289b69daa4bb40ca2b`.
 - Current source checkpoint: `calm-v0.2.22-identity.1` (application version `0.2.22-calm.1`).
 - Previous base and checkpoint: upstream 0.2.21 `10ba8f9b4dc2e6023d4a9879ab77b21841babd10`, tag `calm-v0.2.21-identity.1` (application version `0.2.21-calm.1`).
+- Upgrade candidate: upstream `v0.2.24`, commit `5c2982a81b46e2142d0143d2f83c1ce9c4da1d24`, integrated on `update/v0.2.24` (see [the review report](CALM_V0.2.24_REVIEW.md)). This is a source integration target, not a published fork release or evidence of deployment.
 - Remotes: `origin` is this fork; `upstream` is the official repository.
 
 The initial feature commit imports the already-reviewed identity patch without changing its source or tests. Later commits document maintenance. A source tag identifies code; it does not by itself publish or deploy a binary.
@@ -61,7 +62,7 @@ Before a release, also compile the full application and run broader gateway/regr
 
 ## Building
 
-Use the upstream frontend/backend build process and Dockerfile. This source requires Go 1.27.4 and a Docker builder with BuildKit support. Build the frontend with its frozen lockfile before the backend's `embed` build, or build the binary with `-tags embed` against an already-built `internal/web/dist`. Pass an explicit fork version rather than relying on the inherited `cmd/server/VERSION` file (the upstream tag still contains `0.2.21`). Without BuildKit, a verified alternative is to keep the matching official runtime image and replace only `/app/sub2api` with the locally built binary, then record both the runtime digest and the binary hash. A local, unpublished build can use:
+Use the upstream frontend/backend build process and Dockerfile. This source requires Go 1.27.4 and a Docker builder with BuildKit support. Build the frontend with its frozen lockfile before the backend's `embed` build, or build the binary with `-tags embed` against an already-built `internal/web/dist`. Pass an explicit fork version rather than relying on the inherited `cmd/server/VERSION` file (it can lag the upstream tag; `v0.2.24` still contains `0.2.23`). Without BuildKit, a verified alternative is to keep the matching official runtime image and replace only `/app/sub2api` with the locally built binary, then record both the runtime digest and the binary hash. A local, unpublished build can use:
 
 ```bash
 docker build \
