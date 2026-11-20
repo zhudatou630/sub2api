@@ -2,11 +2,12 @@
 
 ## Status and source
 
-Candidate on `update/v0.2.24`; not yet merged into `calm`, tagged, pushed, published or deployed. Each of those is a separately authorized step.
+Merged into `calm` and tagged `calm-v0.2.24-identity.1`. The tag identifies source only: it publishes no image, and image publication and deployment remain separate operations.
 
 - Fork starting point: `f52f08b22` (`calm`, checkpoint `calm-v0.2.22-identity.1` plus documentation).
 - Reviewed upstream tag: `v0.2.24`, peeled commit `5c2982a81b46e2142d0143d2f83c1ce9c4da1d24` (142 commits after `v0.2.22`). The later upstream `main` commit only syncs `VERSION`.
-- Merged with `--no-ff`; no textual conflicts. No fork source change was needed.
+- Integration branch: `update/v0.2.24`; upstream merged with `--no-ff`, then `calm` fast-forwarded. No textual conflicts; no fork source change was needed.
+- The review itself performed no push, tag, CI publication or deployment. Merging, tagging and pushing were done afterwards as separate authorized steps; CI remains disabled at repository level.
 
 ## Semantic review
 
